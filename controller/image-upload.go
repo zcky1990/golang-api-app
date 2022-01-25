@@ -14,27 +14,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type success struct {
-	Message   string `json:"message"`
-	PublicUrl string `json:"public_url"`
-}
-
-type failed struct {
-	ErrorMessage string `json:"error_message"`
-}
-
-type ImageUploadSuccessResponse struct {
-	Status string  `json:"status"`
-	Code   uint8   `json:"code"`
-	Data   success `json:"data"`
-}
-
-type ImageUploadFailedResponse struct {
-	Status string `json:"status"`
-	Code   uint8  `json:"code"`
-	Data   failed `json:"data"`
-}
-
 var ctx context.Context
 var cld *cloudinary.Cloudinary
 
@@ -58,13 +37,12 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	imageType := r.Form.Get("type")
 
 	if err != nil || imageType == "" {
-		failed := failed{}
+		response := FailedResponse{}
 		if imageType == "" {
-			failed.ErrorMessage = "key type not found"
+			response = GetFailedResponse("key type not found")
 		} else {
-			failed.ErrorMessage = err.Error()
+			response = GetFailedResponse(err.Error())
 		}
-		response := ImageUploadFailedResponse{"failed", 200, failed}
 		json.NewEncoder(w).Encode(response)
 	} else {
 		defer file.Close()
@@ -75,13 +53,10 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		resp, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{PublicID: s.Join([]string{imageType, handler.Filename}, "/")})
 		if err != nil {
 			log.Printf("Error while Upload File, Reason: %v\n", err)
-			failed := failed{err.Error()}
-			response := ImageUploadFailedResponse{"failed", 200, failed}
-			json.NewEncoder(w).Encode(response)
+			json.NewEncoder(w).Encode(GetFailedResponse(err.Error()))
 		} else {
-			success := success{"success upload file", resp.SecureURL}
-			response := ImageUploadSuccessResponse{"success", 200, success}
-
+			response := GetSuccessResponse()
+			response.Data["public_url"] = resp.SecureURL
 			json.NewEncoder(w).Encode(response)
 		}
 	}

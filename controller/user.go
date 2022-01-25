@@ -44,6 +44,15 @@ type UserSignUpRequest struct {
 	Lastname  string `json:"lastname"`
 }
 
+type UserAddRequest struct {
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+	Birthday  string `json:"birthday"`
+}
+
 type UserSuccessResponse struct {
 	Status string    `json:"status"`
 	Code   uint8     `json:"code"`
@@ -57,6 +66,15 @@ func init() {
 	collection = db.Collection("Users")
 }
 
+func addUser(user []byte) (*mongo.InsertOneResult, error) {
+	result_data, err := collection.InsertOne(ctx, user)
+	if err != nil {
+		log.Printf("Error while getting a single todo, Reason: %v\n", err)
+		return nil, err
+	}
+	return result_data, nil
+}
+
 func GetUserByEmail(email string) User {
 	result := User{}
 	err := collection.FindOne(context.TODO(), bson.M{"email": email}).Decode(&result)
@@ -67,7 +85,7 @@ func GetUserByEmail(email string) User {
 	return result
 }
 
-func GetUserByEmailAndPassword(email string, password string) UserLogin {
+func GetUserByEmailAndPassword(email string, password string) (UserLogin, error) {
 	result := UserLogin{}
 	// var podcast bson.M
 	// collection.FindOne(context.TODO(), bson.M{"email": email, "password": password}).Decode(&podcast)
@@ -75,9 +93,9 @@ func GetUserByEmailAndPassword(email string, password string) UserLogin {
 	err := collection.FindOne(context.TODO(), bson.M{"email": email, "password": password}).Decode(&result)
 	if err != nil {
 		log.Printf("Error while getting a single todo, Reason: %v\n", err)
-		return result
+		return result, err
 	}
-	return result
+	return result, nil
 }
 
 func GetAllUserList() []User {
@@ -151,24 +169,65 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 	email := request.Email
 	password := request.Password
-	user := GetUserByEmailAndPassword(email, password)
+	user, err := GetUserByEmailAndPassword(email, password)
+	if err != nil {
+		response := GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+
+	}
 	token, err := jwtconfig.CreateToken(user.Id, user.Email)
+	if err != nil {
+		response := GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+	}
 	user.Authorization = token
 	response := UserSuccessResponse{"success", 200, user}
 	json.NewEncoder(w).Encode(response)
 }
 
 func AddUser(w http.ResponseWriter, r *http.Request) {
-	var request UserLoginRequest
+	var request UserAddRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	email := request.Email
-	password := request.Password
+	// email := request.Email
+	// password := request.Password
+	// firstname := request.Firstname
+	// lastname := request.Lastname
+	// birthday := request.Birthday
+	// username := request.Username
 
-	a := GetUserByEmailAndPassword(email, password)
-	json.NewEncoder(w).Encode(a)
-	fmt.Println("Endpoint Hit: Login")
+	// user_data := bson.D{
+	// 	{Key: "email", Value: email},
+	// 	{Key: "password", Value: password},
+	// 	{Key: "firstname", Value: firstname},
+	// 	{Key: "lastname", Value: lastname},
+	// 	{Key: "birthday", Value: birthday},
+	// 	{Key: "username", Value: username},
+	// }
+	user := GetUserByEmail(request.Email)
+	if (user != User{}) {
+		json.NewEncoder(w).Encode(GetFailedResponse("User exists"))
+	} else {
+		//convert struct to bson
+		user_data, err := bson.Marshal(request)
+		if err != nil {
+			panic(err)
+		}
+
+		user, err := addUser(user_data)
+		if err != nil {
+			response := GetFailedResponse(err.Error())
+			json.NewEncoder(w).Encode(response)
+		}
+		id := user.InsertedID.(primitive.ObjectID).Hex()
+		response := GetSuccessResponse()
+		response.Data["id"] = id
+		response.Data["email"] = request.Email
+		response.Data["firstname"] = request.Firstname
+		response.Data["lastname"] = request.Lastname
+		json.NewEncoder(w).Encode(response)
+	}
 }

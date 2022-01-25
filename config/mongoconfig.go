@@ -26,15 +26,11 @@ func Connect() *mongo.Database {
 		url = s.Join([]string{s.Join([]string{os.Getenv("MONGO_USERNAME"), os.Getenv("MONGO_PASSWORD")}, ":"), url}, "@")
 	}
 	mongoURl := s.Join([]string{"mongodb://", url}, "")
-	log.Println("mongoURl : ", mongoURl)
 	clientOptions := options.Client().ApplyURI(mongoURl)
 	client, err := mongo.NewClient(clientOptions)
 
-	//Set up a context required by mongo.Connect
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	err = client.Connect(ctx)
-
-	//To close the connection at the end
 	defer cancel()
 
 	err = client.Ping(context.Background(), readpref.Primary())
