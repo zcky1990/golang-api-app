@@ -3,12 +3,14 @@ package jwtconfig
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -17,9 +19,15 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+func init() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+}
+
 func CreateToken(userid primitive.ObjectID, email string) (string, error) {
 	var err error
-	os.Setenv("ACCESS_SECRET", "jdnfksdmfksd") //this should be in an env file
 	atClaims := jwt.MapClaims{}
 	atClaims["authorized"] = true
 	atClaims["user_id"] = userid
@@ -34,9 +42,9 @@ func CreateToken(userid primitive.ObjectID, email string) (string, error) {
 }
 
 func ExtractToken(r *http.Request) string {
-	bearToken := r.Header.Get("Authorization")
+	bearerToken := r.Header.Get("Authorization")
 	//normally Authorization the_token_xxx
-	strArr := strings.Split(bearToken, " ")
+	strArr := strings.Split(bearerToken, " ")
 	if len(strArr) == 2 {
 		return strArr[1]
 	}

@@ -3,15 +3,27 @@ package config
 import (
 	"context"
 	"log"
+	"os"
+	s "strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+func init() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+}
+
 func Connect() *mongo.Database {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017/")
+	url := s.Join([]string{os.Getenv("MONGO_HOST"), os.Getenv("MONGO_PORT")}, ":")
+	mongoURl := s.Join([]string{"mongodb://", url}, "")
+	clientOptions := options.Client().ApplyURI(mongoURl)
 	client, err := mongo.NewClient(clientOptions)
 
 	//Set up a context required by mongo.Connect
@@ -27,6 +39,6 @@ func Connect() *mongo.Database {
 	} else {
 		log.Println("Mongo Db Connected!")
 	}
-	db := client.Database("lmsDb")
+	db := client.Database(os.Getenv("MONGO_DATABASE_NAME"))
 	return db
 }
