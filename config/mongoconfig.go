@@ -22,7 +22,11 @@ func init() {
 
 func Connect() *mongo.Database {
 	url := s.Join([]string{os.Getenv("MONGO_HOST"), os.Getenv("MONGO_PORT")}, ":")
+	if os.Getenv("MONGO_USERNAME") != "" && os.Getenv("MONGO_PASSWORD") != "" {
+		url = s.Join([]string{s.Join([]string{os.Getenv("MONGO_USERNAME"), os.Getenv("MONGO_PASSWORD")}, ":"), url}, "@")
+	}
 	mongoURl := s.Join([]string{"mongodb://", url}, "")
+	log.Println("mongoURl : ", mongoURl)
 	clientOptions := options.Client().ApplyURI(mongoURl)
 	client, err := mongo.NewClient(clientOptions)
 
