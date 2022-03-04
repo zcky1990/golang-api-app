@@ -79,7 +79,8 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	} else {
 		userData, err := bson.Marshal(request)
 		if err != nil {
-			panic(err)
+			response := rs.GetFailedResponse(err.Error())
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
