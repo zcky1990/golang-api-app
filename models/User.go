@@ -11,4 +11,6 @@ type User struct {
 	Firstname string             `json:"firstname"`
 	Lastname  string             `json:"lastname"`
 	Authtoken string             `json:"auth_token"`
+	Role      Role
+	Company   Company
 }

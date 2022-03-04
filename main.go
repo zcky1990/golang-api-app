@@ -20,6 +20,8 @@ func main() {
 	myRouter.HandleFunc("/api/users/login", controller.Login).Methods("POST")
 	myRouter.HandleFunc("/api/users/add_user", controller.AddUser).Methods("POST")
 	myRouter.HandleFunc("/api/image/upload", controller.UploadFile).Methods("POST")
+	myRouter.HandleFunc("/api/role/add_role", controller.AddRole).Methods("POST")
+	myRouter.HandleFunc("/api/users/company_register", controller.RegisterCompany).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":10000", myRouter))
 }

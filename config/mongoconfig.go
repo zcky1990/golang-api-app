@@ -21,6 +21,7 @@ func init() {
 }
 
 var url string
+var Ctx context.Context
 
 func Connect() *mongo.Database {
 	if os.Getenv("ENVIRONMENT") == "testing" {
@@ -38,8 +39,8 @@ func Connect() *mongo.Database {
 	clientOptions := options.Client().ApplyURI(mongoURl)
 	client, err := mongo.NewClient(clientOptions)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err = client.Connect(ctx)
+	Ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	err = client.Connect(Ctx)
 	defer cancel()
 
 	err = client.Ping(context.Background(), readpref.Primary())

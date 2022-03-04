@@ -1,115 +1,34 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/gofiber/fiber/v2"
 
-	"webappsapi/main/config"
 	"webappsapi/main/jwtconfig"
 	m "webappsapi/main/models"
 	rq "webappsapi/main/request"
 	rs "webappsapi/main/response"
+	service "webappsapi/main/service"
 )
 
 type UserLoginRequest = rq.UserLoginRequest
 type UserSignUpRequest = rq.UserSignUpRequest
 type UserAddRequest = rq.UserAddRequest
+type RegisterCompanyRequest = rq.RegisterCompanyRequest
+
 type User = m.User
+type Company = m.Company
+type Role = m.Role
 
-var collection *mongo.Collection
-
-func init() {
-	db := config.Connect()
-	collection = db.Collection("Users")
-}
-
-func addUser(user []byte) (*mongo.InsertOneResult, error) {
-	result_data, err := collection.InsertOne(ctx, user)
-	if err != nil {
-		log.Printf("Error while getting a single todo, Reason: %v\n", err)
-		return nil, err
-	}
-	return result_data, nil
-}
-
-func GetUserByEmail(email string) User {
-	result := User{}
-	err := collection.FindOne(context.TODO(), bson.M{"email": email}).Decode(&result)
-	if err != nil {
-		log.Printf("Error while getting a single todo, Reason: %v\n", err)
-		return result
-	}
-	return result
-}
-
-func GetUserByEmailAndPassword(email string, password string) (User, error) {
-	result := User{}
-	err := collection.FindOne(context.TODO(), bson.M{"email": email, "password": password}).Decode(&result)
-	if err != nil {
-		log.Printf("Error while getting a single todo, Reason: %v\n", err)
-		return result, err
-	}
-	return result, nil
-}
-
-func GetAllUserList() []User {
-	results := []User{}
-	cursor, err := collection.Find(context.TODO(), bson.M{})
-
-	if err != nil {
-		log.Printf("Error while getting all todos, Reason: %v\n", err)
-		return results
-	}
-
-	for cursor.Next(context.TODO()) {
-		var user User
-		cursor.Decode(&user)
-		results = append(results, user)
-	}
-	return results
-}
-
-func SearchUser(search_type string, query string) []User {
-	results := []User{}
-	filter := bson.M{}
-	if search_type == "name" {
-		filter = bson.M{"$or": []interface{}{
-			bson.M{"firstName": bson.M{"$regex": query, "$options": "im"}},
-			bson.M{"lastName": bson.M{"$regex": query, "$options": "im"}},
-		},
-		}
-	}
-
-	if search_type == "email" {
-		filter = bson.M{"email": query}
-	}
-
-	cursor, err := collection.Find(context.TODO(), filter)
-
-	if err != nil {
-		log.Printf("Error while getting all todos, Reason: %v\n", err)
-		return results
-	}
-
-	for cursor.Next(context.TODO()) {
-		var user User
-		cursor.Decode(&user)
-		results = append(results, user)
-	}
-	fmt.Println(results)
-	return results
-}
-
+// http function
 func UserList(w http.ResponseWriter, r *http.Request) {
-	response := GetAllUserList()
+	response := service.GetAllUserList()
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -118,7 +37,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	query := values["query"][0]
 	search_type := values["search_type"][0]
 
-	response := SearchUser(search_type, query)
+	response := service.SearchUser(search_type, query)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -131,7 +50,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 	email := request.Email
 	password := request.Password
-	user, err := GetUserByEmailAndPassword(email, password)
+	user, err := service.GetUserByEmailAndPassword(email, password)
 	if err != nil {
 		response := rs.GetFailedResponse(err.Error())
 		json.NewEncoder(w).Encode(response)
@@ -154,23 +73,101 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	user := GetUserByEmail(request.Email)
+	user := service.GetUserByEmail(request.Email)
 	if (user != User{}) {
 		json.NewEncoder(w).Encode(rs.GetFailedResponse("User exists"))
 	} else {
-		//convert struct to bson
-		user_data, err := bson.Marshal(request)
+		userData, err := bson.Marshal(request)
 		if err != nil {
 			panic(err)
+			return
 		}
 
-		user, err := addUser(user_data)
+		data, err := service.AddUser(userData)
 		if err != nil {
 			response := rs.GetFailedResponse(err.Error())
 			json.NewEncoder(w).Encode(response)
+			return
 		}
-		// id := user.InsertedID.(primitive.ObjectID).Hex()
-		response := rs.GetSuccessResponse(&fiber.Map{"data": user})
+		response := rs.GetSuccessResponse(&fiber.Map{"data": data})
 		json.NewEncoder(w).Encode(response)
 	}
+}
+
+type UserMongo struct {
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+	Password  string `json:"password"`
+	Birthday  string `json:"birthday"`
+	Role      Role
+	Company   Company
+}
+
+func RegisterCompany(w http.ResponseWriter, r *http.Request) {
+	var request RegisterCompanyRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	roleOwner := service.FindRoleOwner()
+	fmt.Print(request.Company.Companyemail)
+	companyModels := service.FindCompanyByEmail(request.Company.Companyemail)
+	fmt.Print(companyModels)
+	if (companyModels == m.Company{}) {
+		companyData, err := bson.Marshal(request.Company)
+		if err != nil {
+			response := rs.GetFailedResponse(err.Error())
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+		company, err := service.InsertOneCompany(companyData)
+		if err != nil {
+			response := rs.GetFailedResponse(err.Error())
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+		id := company.InsertedID.(primitive.ObjectID)
+		companyModels = Company{
+			Id:             id,
+			Companyname:    request.Company.Companyname,
+			Companyaddress: request.Company.Companyaddress,
+			Companyemail:   request.Company.Companyemail,
+			Companyphone:   request.Company.Companyphone,
+		}
+	}
+
+	user := UserMongo{
+		Username:  request.User.Username,
+		Email:     request.User.Email,
+		Password:  request.User.Password,
+		Firstname: request.User.Firstname,
+		Lastname:  request.User.Lastname,
+		Birthday:  request.User.Birthday,
+		Role:      roleOwner,
+		Company:   companyModels,
+	}
+
+	responseUser := service.GetUserByEmail(user.Email)
+	if (responseUser != User{}) {
+		json.NewEncoder(w).Encode(rs.GetFailedResponse("User exists"))
+		return
+	}
+
+	userData, err := bson.Marshal(user)
+	if err != nil {
+		response := rs.GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	data, err := service.AddUser(userData)
+	if err != nil {
+		response := rs.GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	response := rs.GetSuccessResponse(&fiber.Map{"data": data})
+	json.NewEncoder(w).Encode(response)
 }
