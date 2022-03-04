@@ -6,10 +6,10 @@ import (
 
 type User struct {
 	Id        primitive.ObjectID `bson:"_id"`
-	Username  string             `json:"username"`
+	UserName  string             `json:"username"`
 	Email     string             `json:"email"`
-	Firstname string             `json:"firstname"`
-	Lastname  string             `json:"lastname"`
+	FirstName string             `json:"firstname"`
+	LastName  string             `json:"lastname"`
 	Authtoken string             `json:"auth_token"`
 	Role      Role
 	Company   Company

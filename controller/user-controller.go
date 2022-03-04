@@ -2,8 +2,8 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -74,25 +74,26 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := service.GetUserByEmail(request.Email)
-	if (user != User{}) {
+	if !reflect.ValueOf(user).IsZero() {
 		json.NewEncoder(w).Encode(rs.GetFailedResponse("User exists"))
-	} else {
-		userData, err := bson.Marshal(request)
-		if err != nil {
-			response := rs.GetFailedResponse(err.Error())
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
-		data, err := service.AddUser(userData)
-		if err != nil {
-			response := rs.GetFailedResponse(err.Error())
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-		response := rs.GetSuccessResponse(&fiber.Map{"data": data})
-		json.NewEncoder(w).Encode(response)
+		return
 	}
+	userData, err := bson.Marshal(request)
+	if err != nil {
+		response := rs.GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	data, err := service.AddUser(userData)
+	if err != nil {
+		response := rs.GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	response := rs.GetSuccessResponse(&fiber.Map{"data": data})
+	json.NewEncoder(w).Encode(response)
+
 }
 
 type UserMongo struct {
@@ -113,10 +114,8 @@ func RegisterCompany(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	roleOwner := service.FindRoleOwner()
-	fmt.Print(request.Company.Companyemail)
-	companyModels := service.FindCompanyByEmail(request.Company.Companyemail)
-	fmt.Print(companyModels)
+	roleOwner := service.FindRoleByName(request.User.AccessType)
+	companyModels := service.FindCompanyByEmail(request.Company.CompanyEmail)
 	if (companyModels == m.Company{}) {
 		companyData, err := bson.Marshal(request.Company)
 		if err != nil {
@@ -133,26 +132,26 @@ func RegisterCompany(w http.ResponseWriter, r *http.Request) {
 		id := company.InsertedID.(primitive.ObjectID)
 		companyModels = Company{
 			Id:             id,
-			Companyname:    request.Company.Companyname,
-			Companyaddress: request.Company.Companyaddress,
-			Companyemail:   request.Company.Companyemail,
-			Companyphone:   request.Company.Companyphone,
+			CompanyName:    request.Company.CompanyName,
+			CompanyAddress: request.Company.CompanyAddress,
+			CompanyEmail:   request.Company.CompanyEmail,
+			CompanyPhone:   request.Company.CompanyPhone,
 		}
 	}
 
 	user := UserMongo{
-		Username:  request.User.Username,
+		Username:  request.User.UserName,
 		Email:     request.User.Email,
 		Password:  request.User.Password,
-		Firstname: request.User.Firstname,
-		Lastname:  request.User.Lastname,
+		Firstname: request.User.FirstName,
+		Lastname:  request.User.LastName,
 		Birthday:  request.User.Birthday,
 		Role:      roleOwner,
 		Company:   companyModels,
 	}
 
 	responseUser := service.GetUserByEmail(user.Email)
-	if (responseUser != User{}) {
+	if !reflect.ValueOf(responseUser).IsZero() {
 		json.NewEncoder(w).Encode(rs.GetFailedResponse("User exists"))
 		return
 	}

@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"reflect"
+
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 
-	m "webappsapi/main/models"
 	rq "webappsapi/main/request"
 	rs "webappsapi/main/response"
 	service "webappsapi/main/service"
@@ -20,8 +21,8 @@ func AddRole(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	role := service.FindRoleByName(request.Rolename)
-	if (role != m.Role{}) {
+	role := service.FindRoleByName(request.RoleName)
+	if !reflect.ValueOf(role).IsZero() {
 		json.NewEncoder(w).Encode(rs.GetFailedResponse("Role exists"))
 		return
 	}
