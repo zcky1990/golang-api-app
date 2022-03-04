@@ -20,10 +20,19 @@ func init() {
 	}
 }
 
+var url string
+
 func Connect() *mongo.Database {
-	url := s.Join([]string{os.Getenv("MONGO_HOST"), os.Getenv("MONGO_PORT")}, ":")
-	if os.Getenv("MONGO_USERNAME") != "" && os.Getenv("MONGO_PASSWORD") != "" {
-		url = s.Join([]string{s.Join([]string{os.Getenv("MONGO_USERNAME"), os.Getenv("MONGO_PASSWORD")}, ":"), url}, "@")
+	if os.Getenv("ENVIRONMENT") == "testing" {
+		url = s.Join([]string{os.Getenv("MONGO_TEST_HOST"), os.Getenv("MONGO_TEST_PORT")}, ":")
+		if os.Getenv("MONGO_TEST_USERNAME") != "" && os.Getenv("MONGO_TEST_PASSWORD") != "" {
+			url = s.Join([]string{s.Join([]string{os.Getenv("MONGO_TEST_USERNAME"), os.Getenv("MONGO_TEST_PASSWORD")}, ":"), url}, "@")
+		}
+	} else {
+		url = s.Join([]string{os.Getenv("MONGO_HOST"), os.Getenv("MONGO_PORT")}, ":")
+		if os.Getenv("MONGO_USERNAME") != "" && os.Getenv("MONGO_PASSWORD") != "" {
+			url = s.Join([]string{s.Join([]string{os.Getenv("MONGO_USERNAME"), os.Getenv("MONGO_PASSWORD")}, ":"), url}, "@")
+		}
 	}
 	mongoURl := s.Join([]string{"mongodb://", url}, "")
 	clientOptions := options.Client().ApplyURI(mongoURl)
@@ -39,6 +48,11 @@ func Connect() *mongo.Database {
 	} else {
 		log.Println("Mongo Db Connected!")
 	}
-	db := client.Database(os.Getenv("MONGO_DATABASE_NAME"))
-	return db
+	if os.Getenv("ENVIRONMENT") == "testing" {
+		db := client.Database(os.Getenv("MONGO_TEST_DATABASE_NAME"))
+		return db
+	} else {
+		db := client.Database(os.Getenv("MONGO_DATABASE_NAME"))
+		return db
+	}
 }

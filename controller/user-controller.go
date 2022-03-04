@@ -8,56 +8,21 @@ import (
 	"net/http"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/gofiber/fiber/v2"
 
 	"webappsapi/main/config"
 	"webappsapi/main/jwtconfig"
+	m "webappsapi/main/models"
+	rq "webappsapi/main/request"
+	rs "webappsapi/main/response"
 )
 
-type User struct {
-	Id        primitive.ObjectID `bson:"_id"`
-	Username  string             `json:"username"`
-	Email     string             `json:"email"`
-	Firstname string             `json:"firstname"`
-	Lastname  string             `json:"lastname"`
-}
-
-type UserLogin struct {
-	Id            primitive.ObjectID `bson:"_id"`
-	Username      string             `json:"username"`
-	Email         string             `json:"email"`
-	Firstname     string             `json:"firstname"`
-	Lastname      string             `json:"lastname"`
-	Authorization string             `json:"auth_token"`
-}
-
-type UserLoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type UserSignUpRequest struct {
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-}
-
-type UserAddRequest struct {
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-	Birthday  string `json:"birthday"`
-}
-
-type UserSuccessResponse struct {
-	Status string    `json:"status"`
-	Code   uint8     `json:"code"`
-	Data   UserLogin `json:"data"`
-}
+type UserLoginRequest = rq.UserLoginRequest
+type UserSignUpRequest = rq.UserSignUpRequest
+type UserAddRequest = rq.UserAddRequest
+type User = m.User
 
 var collection *mongo.Collection
 
@@ -85,11 +50,8 @@ func GetUserByEmail(email string) User {
 	return result
 }
 
-func GetUserByEmailAndPassword(email string, password string) (UserLogin, error) {
-	result := UserLogin{}
-	// var podcast bson.M
-	// collection.FindOne(context.TODO(), bson.M{"email": email, "password": password}).Decode(&podcast)
-	// fmt.Println("podcast : ", podcast)
+func GetUserByEmailAndPassword(email string, password string) (User, error) {
+	result := User{}
 	err := collection.FindOne(context.TODO(), bson.M{"email": email, "password": password}).Decode(&result)
 	if err != nil {
 		log.Printf("Error while getting a single todo, Reason: %v\n", err)
@@ -171,17 +133,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	password := request.Password
 	user, err := GetUserByEmailAndPassword(email, password)
 	if err != nil {
-		response := GetFailedResponse(err.Error())
+		response := rs.GetFailedResponse(err.Error())
 		json.NewEncoder(w).Encode(response)
-
+		return
 	}
 	token, err := jwtconfig.CreateToken(user.Id, user.Email)
 	if err != nil {
-		response := GetFailedResponse(err.Error())
+		response := rs.GetFailedResponse(err.Error())
 		json.NewEncoder(w).Encode(response)
 	}
-	user.Authorization = token
-	response := UserSuccessResponse{"success", 200, user}
+	user.Authtoken = token
+	response := rs.GetSuccessResponse(&fiber.Map{"data": user})
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -192,24 +154,9 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// email := request.Email
-	// password := request.Password
-	// firstname := request.Firstname
-	// lastname := request.Lastname
-	// birthday := request.Birthday
-	// username := request.Username
-
-	// user_data := bson.D{
-	// 	{Key: "email", Value: email},
-	// 	{Key: "password", Value: password},
-	// 	{Key: "firstname", Value: firstname},
-	// 	{Key: "lastname", Value: lastname},
-	// 	{Key: "birthday", Value: birthday},
-	// 	{Key: "username", Value: username},
-	// }
 	user := GetUserByEmail(request.Email)
 	if (user != User{}) {
-		json.NewEncoder(w).Encode(GetFailedResponse("User exists"))
+		json.NewEncoder(w).Encode(rs.GetFailedResponse("User exists"))
 	} else {
 		//convert struct to bson
 		user_data, err := bson.Marshal(request)
@@ -219,15 +166,11 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 
 		user, err := addUser(user_data)
 		if err != nil {
-			response := GetFailedResponse(err.Error())
+			response := rs.GetFailedResponse(err.Error())
 			json.NewEncoder(w).Encode(response)
 		}
-		id := user.InsertedID.(primitive.ObjectID).Hex()
-		response := GetSuccessResponse()
-		response.Data["id"] = id
-		response.Data["email"] = request.Email
-		response.Data["firstname"] = request.Firstname
-		response.Data["lastname"] = request.Lastname
+		// id := user.InsertedID.(primitive.ObjectID).Hex()
+		response := rs.GetSuccessResponse(&fiber.Map{"data": user})
 		json.NewEncoder(w).Encode(response)
 	}
 }
