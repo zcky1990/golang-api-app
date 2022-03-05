@@ -18,11 +18,15 @@ func main() {
 	myRouter.HandleFunc("/api/users/all", jwtconfig.IsAuthorized(controller.UserList)).Methods("GET")
 	myRouter.HandleFunc("/api/users/search", jwtconfig.IsAuthorized(controller.Search)).Methods("GET")
 	myRouter.HandleFunc("/api/users/login", controller.Login).Methods("POST")
-	myRouter.HandleFunc("/api/users/add_user_members", jwtconfig.IsAuthorized(controller.AddUser)).Methods("POST")
-	myRouter.HandleFunc("/api/image/upload", controller.UploadFile).Methods("POST")
+	myRouter.HandleFunc("/api/users/company_register", controller.RegisterCompany).Methods("POST")
+	myRouter.HandleFunc("/api/image/upload", jwtconfig.IsAuthorized(controller.UploadFile)).Methods("POST")
 	myRouter.HandleFunc("/api/role/add_role", controller.AddRole).Methods("POST")
 	myRouter.HandleFunc("/api/access/add_access", controller.AddAccess).Methods("POST")
-	myRouter.HandleFunc("/api/users/company_register", controller.RegisterCompany).Methods("POST")
 
+	myRouter.HandleFunc("/api/members/add_members", jwtconfig.IsAuthorized(controller.AddUserMember)).Methods("POST")
+	myRouter.HandleFunc("/api/members/add_members_access", jwtconfig.IsAuthorized(controller.AddMemberAccess)).Methods("POST")
+	myRouter.HandleFunc("/api/members/get_list_members_access", jwtconfig.IsAuthorized(controller.GetListMemberAccess)).Methods("GET")
+	myRouter.HandleFunc("/api/members/add_members_role", jwtconfig.IsAuthorized(controller.AddMembersRole)).Methods("POST")
+	myRouter.HandleFunc("/api/members/get_list_members_role", jwtconfig.IsAuthorized(controller.GetListMemberRole)).Methods("GET")
 	log.Fatal(http.ListenAndServe(":10000", myRouter))
 }

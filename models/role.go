@@ -9,10 +9,18 @@ type Role struct {
 	RoleName      string             `bson:"role_name" json:"role_name"`
 	Description   string             `bson:"description" json:"description"`
 	AccessLevelId primitive.ObjectID `bson:"access_level_id" json:"access_level_id"`
+	CompanyId     primitive.ObjectID `bson:"company_id" json:"company_id"`
 }
 
 type InsertRoleMongoModels struct {
 	RoleName      string             `bson:"role_name" json:"role_name"`
 	Description   string             `bson:"description" json:"description"`
 	AccessLevelId primitive.ObjectID `bson:"access_level_id" json:"access_level_id"`
+}
+
+type InsertRoleMongoModelsWithCompanyId struct {
+	RoleName      string             `bson:"role_name" json:"role_name"`
+	Description   string             `bson:"description" json:"description"`
+	AccessLevelId primitive.ObjectID `bson:"access_level_id" json:"access_level_id"`
+	CompanyId     primitive.ObjectID `bson:"company_id" json:"company_id"`
 }

@@ -66,8 +66,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func AddUser(w http.ResponseWriter, r *http.Request) {
-	var request UserAddRequest
+func AddUserMember(w http.ResponseWriter, r *http.Request) {
+	var request rq.UserMembersAddRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -78,7 +78,33 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(rs.GetFailedResponse("User exists"))
 		return
 	}
-	userData, err := bson.Marshal(request)
+
+	roleId, err := primitive.ObjectIDFromHex(request.RoleId)
+	if err != nil {
+		response := rs.GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	companyId, err := primitive.ObjectIDFromHex(request.CompanyId)
+	if err != nil {
+		response := rs.GetFailedResponse(err.Error())
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	userParams := m.InsertUserMongoModels{
+		Username:  request.UserName,
+		Email:     request.Email,
+		Password:  request.Password,
+		Firstname: request.FirstName,
+		Lastname:  request.LastName,
+		Birthday:  request.Birthday,
+		RoleId:    roleId,
+		CompanyId: companyId,
+	}
+
+	userData, err := bson.Marshal(userParams)
 	if err != nil {
 		response := rs.GetFailedResponse(err.Error())
 		json.NewEncoder(w).Encode(response)

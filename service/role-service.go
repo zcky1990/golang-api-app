@@ -62,3 +62,25 @@ func InsertOneRole(user []byte) (*mongo.InsertOneResult, error) {
 	}
 	return result_data, nil
 }
+
+func GetRoleListBaseOnCompanyId(company_id string) []m.Role {
+	results := []m.Role{}
+	companyId, err := primitive.ObjectIDFromHex(company_id)
+	if err != nil {
+		log.Println(err)
+		return results
+	}
+	cursor, err := roleCollection.Find(context.TODO(), bson.M{"company_id": companyId})
+
+	if err != nil {
+		log.Printf("Error while getting all todos, Reason: %v\n", err)
+		return results
+	}
+
+	for cursor.Next(context.TODO()) {
+		var access m.Role
+		cursor.Decode(&access)
+		results = append(results, access)
+	}
+	return results
+}

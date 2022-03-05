@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"webappsapi/main/config"
@@ -18,6 +19,21 @@ var collection *mongo.Collection
 func init() {
 	db := config.Connect()
 	collection = db.Collection("Users")
+}
+
+func FindUserById(id string) User {
+	result := User{}
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Println(err)
+		return result
+	}
+	err = collection.FindOne(context.TODO(), bson.M{"_id": oid}).Decode(&result)
+	if err != nil {
+		log.Printf("Error while getting a single todo, Reason: %v\n", err)
+		return result
+	}
+	return result
 }
 
 func AddUser(user []byte) (*mongo.InsertOneResult, error) {

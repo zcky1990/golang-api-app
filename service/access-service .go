@@ -53,6 +53,21 @@ func FindAccessById(id string) m.Access {
 	return result
 }
 
+func FindAccessByAccessLevelAndCompanyId(accessLevel int64, company_id string) m.Access {
+	result := m.Access{}
+	companyId, err := primitive.ObjectIDFromHex(company_id)
+	if err != nil {
+		log.Println(err)
+		return result
+	}
+	err = accessCollection.FindOne(context.TODO(), bson.M{"access_level": accessLevel, "company_id": companyId}).Decode(&result)
+	if err != nil {
+		log.Printf("Error while getting a single todo, Reason: %v\n", err)
+		return result
+	}
+	return result
+}
+
 func FindAccessByIdAndUrl(id string, path string) m.Access {
 	result := m.Access{}
 	oid, err := primitive.ObjectIDFromHex(id)
@@ -66,4 +81,26 @@ func FindAccessByIdAndUrl(id string, path string) m.Access {
 		return result
 	}
 	return result
+}
+
+func GetAccessListBaseOnCompanyId(company_id string) []m.Access {
+	results := []m.Access{}
+	companyId, err := primitive.ObjectIDFromHex(company_id)
+	if err != nil {
+		log.Println(err)
+		return results
+	}
+	cursor, err := accessCollection.Find(context.TODO(), bson.M{"company_id": companyId})
+
+	if err != nil {
+		log.Printf("Error while getting all todos, Reason: %v\n", err)
+		return results
+	}
+
+	for cursor.Next(context.TODO()) {
+		var access m.Access
+		cursor.Decode(&access)
+		results = append(results, access)
+	}
+	return results
 }
