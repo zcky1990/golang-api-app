@@ -95,7 +95,6 @@ func IsAuthorized(handler http.HandlerFunc) http.HandlerFunc {
 			claims := token.Claims.(jwt.MapClaims)
 			data := claims["role_id"].(string)
 			isValid := isHasValidUrlAccess(data, pathUrl)
-			fmt.Println("isHasValidUrlAccess : ", isValid)
 			if isValid {
 				handler.ServeHTTP(w, r)
 				return

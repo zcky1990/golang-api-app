@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -94,6 +93,5 @@ func SearchUser(search_type string, query string) []User {
 		cursor.Decode(&user)
 		results = append(results, user)
 	}
-	fmt.Println(results)
 	return results
 }
