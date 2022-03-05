@@ -56,7 +56,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 		return
 	}
-	token, err := jwtconfig.CreateToken(user.Id, user.Email)
+	token, err := jwtconfig.CreateToken(user)
 	if err != nil {
 		response := rs.GetFailedResponse(err.Error())
 		json.NewEncoder(w).Encode(response)
@@ -96,17 +96,6 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type UserMongo struct {
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-	Password  string `json:"password"`
-	Birthday  string `json:"birthday"`
-	Role      Role
-	Company   Company
-}
-
 func RegisterCompany(w http.ResponseWriter, r *http.Request) {
 	var request RegisterCompanyRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -114,8 +103,9 @@ func RegisterCompany(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	roleOwner := service.FindRoleByName(request.User.AccessType)
+	roleOwner := service.FindRoleById(request.User.RoleId)
 	companyModels := service.FindCompanyByEmail(request.Company.CompanyEmail)
+	var company_id primitive.ObjectID
 	if (companyModels == m.Company{}) {
 		companyData, err := bson.Marshal(request.Company)
 		if err != nil {
@@ -129,25 +119,25 @@ func RegisterCompany(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(response)
 			return
 		}
-		id := company.InsertedID.(primitive.ObjectID)
-		companyModels = Company{
-			Id:             id,
-			CompanyName:    request.Company.CompanyName,
-			CompanyAddress: request.Company.CompanyAddress,
-			CompanyEmail:   request.Company.CompanyEmail,
-			CompanyPhone:   request.Company.CompanyPhone,
-		}
+		company_id = company.InsertedID.(primitive.ObjectID)
+	} else {
+		company_id = companyModels.Id
 	}
 
-	user := UserMongo{
+	if company_id.IsZero() {
+		response := rs.GetFailedResponse("failed to add your company to db")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	user := m.InsertUserMongoModels{
 		Username:  request.User.UserName,
 		Email:     request.User.Email,
 		Password:  request.User.Password,
 		Firstname: request.User.FirstName,
 		Lastname:  request.User.LastName,
 		Birthday:  request.User.Birthday,
-		Role:      roleOwner,
-		Company:   companyModels,
+		RoleId:    roleOwner.Id,
+		CompanyId: company_id,
 	}
 
 	responseUser := service.GetUserByEmail(user.Email)

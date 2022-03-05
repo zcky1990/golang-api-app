@@ -6,18 +6,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
 
-type Error struct {
-	IsError bool   `json:"isError"`
-	Message string `json:"message"`
-}
+	m "webappsapi/main/models"
+	rs "webappsapi/main/response"
+	"webappsapi/main/service"
+)
 
 func init() {
 	err := godotenv.Load(".env")
@@ -26,13 +25,15 @@ func init() {
 	}
 }
 
-func CreateToken(userid primitive.ObjectID, email string) (string, error) {
+func CreateToken(user m.User) (string, error) {
 	var err error
 	atClaims := jwt.MapClaims{}
 	atClaims["authorized"] = true
-	atClaims["user_id"] = userid
-	atClaims["email"] = email
-	atClaims["exp"] = time.Now().Add(time.Minute * 15).Unix()
+	atClaims["user_id"] = user.Id
+	atClaims["email"] = user.Email
+	atClaims["company_id"] = user.CompanyId
+	atClaims["role_id"] = user.RoleId
+	atClaims["exp"] = time.Now().Add(time.Minute * 200).Unix()
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	token, err := at.SignedString([]byte(os.Getenv("ACCESS_SECRET")))
 	if err != nil {
@@ -69,44 +70,49 @@ func VerifyToken(r *http.Request) (*jwt.Token, error) {
 
 func IsAuthorized(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		if r.Header["Uid"] == nil {
-			var err Error
-			err = SetError(err, "No Uid Found")
-			json.NewEncoder(w).Encode(err)
+			response := rs.GetFailedResponse("No Uid Found")
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
 		if r.Header["Authorization"] == nil {
-			var err Error
-			err = SetError(err, "No Token Found")
-			json.NewEncoder(w).Encode(err)
+			response := rs.GetFailedResponse("No Token Found")
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
 		token, err := VerifyToken(r)
 
 		if err != nil {
-			var err Error
-			err = SetError(err, "Your Token has been expired.")
-			json.NewEncoder(w).Encode(err)
+			response := rs.GetFailedResponse("Your Token has been expired.")
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 
 		if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			handler.ServeHTTP(w, r)
-			return
+			pathUrl := r.URL.Path
+			claims := token.Claims.(jwt.MapClaims)
+			data := claims["role_id"].(string)
+			isValid := isHasValidUrlAccess(data, pathUrl)
+			fmt.Println("isHasValidUrlAccess : ", isValid)
+			if isValid {
+				handler.ServeHTTP(w, r)
+				return
+			} else {
+				response := rs.GetFailedResponse("Not Authorized to access this URL")
+				json.NewEncoder(w).Encode(response)
+				return
+			}
 		}
-
-		var reserr Error
-		reserr = SetError(reserr, "Not Authorized.")
-		json.NewEncoder(w).Encode(err)
-
+		response := rs.GetFailedResponse("Not Authorized token")
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
-func SetError(err Error, message string) Error {
-	err.IsError = true
-	err.Message = message
-	return err
+func isHasValidUrlAccess(role_id string, path string) bool {
+	role := service.FindRoleById(role_id)
+	accessLevelId := role.AccessLevelId.Hex()
+	access := service.FindAccessByIdAndUrl(accessLevelId, path)
+	return !reflect.ValueOf(access).IsZero()
 }
