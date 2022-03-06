@@ -12,9 +12,18 @@ type Chart struct {
 
 type ChartList struct {
 	Id         primitive.ObjectID `bson:"_id"`
+	ProductId  primitive.ObjectID `bson:"product_id" json:"product_id"`
 	Tilte      string             `bson:"title" json:"title"`
 	PictureUrl string             `bson:"picture_url" json:"picture_url"`
 	Price      float32            `bson:"price" json:"price"`
+}
+
+type ChartListWithUserId struct {
+	Id         primitive.ObjectID `bson:"_id"`
+	Tilte      string             `bson:"title" json:"title"`
+	PictureUrl string             `bson:"picture_url" json:"picture_url"`
+	Price      float32            `bson:"price" json:"price"`
+	UserId     primitive.ObjectID `bson:"user_id" json:"user_id"`
 }
 
 type InsertChartMongoModels struct {

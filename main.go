@@ -37,6 +37,6 @@ func main() {
 	//chart service
 	myRouter.HandleFunc("/api/v1/add_chart", controller.AddChart).Methods("POST")
 	myRouter.HandleFunc("/api/v1/chart/detail/{id}", jwtconfig.IsAuthorized(controller.GetChartDetailByUserId)).Methods("GET")
-
+	myRouter.HandleFunc("/api/v1/chart/check_out", jwtconfig.IsAuthorized(controller.Checkout)).Methods("POST")
 	log.Fatal(http.ListenAndServe(":10000", myRouter))
 }

@@ -28,6 +28,22 @@ func InsertOneChart(chart []byte) (*mongo.InsertOneResult, error) {
 	return result_data, nil
 }
 
+func RemoveOneChart(id string) *mongo.DeleteResult {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Println(err)
+	}
+	result, err := chartCollection.DeleteOne(config.Ctx, bson.M{"_id": oid})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if result.DeletedCount == 0 {
+		log.Fatal("Error on deleting one Hero", err)
+	}
+	return result
+}
+
 func GetChartListByUserId(user_id string) []m.ChartList {
 	results := []m.ChartList{}
 	userId, err := primitive.ObjectIDFromHex(user_id)

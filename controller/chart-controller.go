@@ -56,3 +56,44 @@ func GetChartDetailByUserId(w http.ResponseWriter, r *http.Request) {
 	response := rs.GetSuccessResponse(&fiber.Map{"product": chart})
 	json.NewEncoder(w).Encode(response)
 }
+
+func Checkout(w http.ResponseWriter, r *http.Request) {
+	var request rq.ChartRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	chart := service.GetChartListByUserId(string(request.UserId.Hex()))
+	if reflect.ValueOf(chart).IsZero() {
+		json.NewEncoder(w).Encode(rs.GetFailedResponse("Chart empty"))
+		return
+	}
+
+	for _, value := range chart {
+		orderData := m.InsertOrderMongoModels{
+			ProductId: value.ProductId,
+			UserId:    request.UserId,
+		}
+		order, err := bson.Marshal(orderData)
+		if err != nil {
+			panic(err)
+		}
+		data, err := service.InsertOneOrder(order)
+		if err != nil {
+			response := rs.GetFailedResponse(err.Error())
+			json.NewEncoder(w).Encode(response)
+		}
+		if !reflect.ValueOf(data).IsZero() {
+			deleteResult := service.RemoveOneChart(value.Id.Hex())
+			if reflect.ValueOf(deleteResult).IsZero() {
+				json.NewEncoder(w).Encode(rs.GetFailedResponse("Failed checkout"))
+				return
+			}
+		}
+	}
+	response := rs.GetSuccessResponseData()
+	response.Data["message"] = "Successffully Check out"
+	json.NewEncoder(w).Encode(response)
+}
