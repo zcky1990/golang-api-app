@@ -36,7 +36,7 @@ func GetChartListByUserId(user_id string) []m.ChartList {
 		return results
 	}
 
-	filter := []bson.M{bson.M{"$lookup": bson.M{"from": "product", "localField": "product_id", "foreignField": "_id", "as": "ps"}}, bson.M{"$unwind": bson.M{"path": "$ps"}}, bson.M{"$match": bson.M{"user_id": userId}}, bson.M{"$project": bson.M{"id": "$_id", "product_id": "$ps._id", "title": "$ps.title", "price": "$ps.price", "picture_url": "$ps.picture_url"}}}
+	filter := []bson.M{{"$lookup": bson.M{"from": "product", "localField": "product_id", "foreignField": "_id", "as": "ps"}}, {"$unwind": bson.M{"path": "$ps"}}, {"$match": bson.M{"user_id": userId}}, {"$project": bson.M{"id": "$_id", "product_id": "$ps._id", "title": "$ps.title", "price": "$ps.price", "picture_url": "$ps.picture_url"}}}
 	cursor, err := chartCollection.Aggregate(context.TODO(), filter)
 	if err != nil {
 		log.Printf("Error while getting all todos, Reason: %v\n", err)
