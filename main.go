@@ -29,9 +29,14 @@ func main() {
 	myRouter.HandleFunc("/api/members/add_members_role", jwtconfig.IsAuthorized(controller.AddMembersRole)).Methods("POST")
 	myRouter.HandleFunc("/api/members/get_list_members_role", jwtconfig.IsAuthorized(controller.GetListMemberRole)).Methods("GET")
 
+	//product service
 	myRouter.HandleFunc("/api/v1/add_product", controller.AddProduct).Methods("POST")
 	myRouter.HandleFunc("/api/v1/detail/{id}", jwtconfig.IsAuthorized(controller.GetProductDetailById)).Methods("GET")
 	myRouter.HandleFunc("/api/v1/lists", jwtconfig.IsAuthorized(controller.GetProductList)).Methods("GET")
+
+	//chart service
+	myRouter.HandleFunc("/api/v1/add_chart", controller.AddChart).Methods("POST")
+	myRouter.HandleFunc("/api/v1/chart/detail/{id}", jwtconfig.IsAuthorized(controller.GetChartDetailByUserId)).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":10000", myRouter))
 }

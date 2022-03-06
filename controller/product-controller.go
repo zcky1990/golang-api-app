@@ -45,7 +45,6 @@ func AddProduct(w http.ResponseWriter, r *http.Request) {
 func GetProductDetailById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	fmt.Println("ID ", id)
 	product := service.FindProductById(id)
 	if reflect.ValueOf(product).IsZero() {
 		json.NewEncoder(w).Encode(rs.GetFailedResponse("Product Doesn't exists"))
