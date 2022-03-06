@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
 	m "webappsapi/main/models"
@@ -92,6 +93,13 @@ func IsAuthorized(handler http.HandlerFunc) http.HandlerFunc {
 
 		if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			pathUrl := r.URL.Path
+			vars := mux.Vars(r)
+			id := vars["id"]
+			if len(id) > 0 {
+				lenghtId := len(id) + 1
+				lengUrl := len(pathUrl)
+				pathUrl = string(pathUrl[0:(lengUrl - lenghtId)])
+			}
 			claims := token.Claims.(jwt.MapClaims)
 			data := claims["role_id"].(string)
 			isValid := isHasValidUrlAccess(data, pathUrl)
